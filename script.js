@@ -7,90 +7,80 @@ const output = document.getElementById('output');
 let isError = false;
 
 function cleanInputString(str) {
-  const regex = /[+-\s]/g;
-  return str.replace(regex, '');
+  return str.replace(/[+\-\s]/g, ''); // Remove spaces, +, and -
 }
 
 function isInvalidInput(str) {
-  const regex = /\d+e\d+/i;
-  return str.match(regex);
+  return /\d+e\d+/i.test(str); // Check for scientific notation (e.g., 1e3)
 }
 
 function addEntry() {
   const targetInputContainer = document.querySelector(`#${entryDropdown.value} .input-container`);
-  const entryNumber = targetInputContainer.querySelectorAll('input[type="text"]').length + 1;
-  const HTMLString = `
-  <label for="${entryDropdown.value}-${entryNumber}-name">Entry ${entryNumber} Name</label>
-  <input type="text" id="${entryDropdown.value}-${entryNumber}-name" placeholder="Name" />
-  <label for="${entryDropdown.value}-${entryNumber}-calories">Entry ${entryNumber} Calories</label>
-  <input
-    type="number"
-    min="0"
-    id="${entryDropdown.value}-${entryNumber}-calories"
-    placeholder="Calories"
-  />`;
-  targetInputContainer.insertAdjacentHTML('beforeend', HTMLString);
+  
+  if (!targetInputContainer) {
+    alert("Error: Please select a valid category!");
+    return;
+  }
+
+  const entryNumber = targetInputContainer.querySelectorAll('input[type="number"]').length + 1;
+  const entryHTML = `
+    <div class="entry-group">
+      <input type="text" placeholder="Food/Exercise Name" id="${entryDropdown.value}-${entryNumber}-name" required />
+      <input type="number" min="0" placeholder="Calories" id="${entryDropdown.value}-${entryNumber}-calories" required />
+    </div>`;
+  
+  targetInputContainer.insertAdjacentHTML('beforeend', entryHTML);
 }
 
 function calculateCalories(e) {
   e.preventDefault();
   isError = false;
 
-  const breakfastNumberInputs = document.querySelectorAll("#breakfast input[type='number']");
-  const lunchNumberInputs = document.querySelectorAll("#lunch input[type='number']");
-  const dinnerNumberInputs = document.querySelectorAll("#dinner input[type='number']");
-  const snacksNumberInputs = document.querySelectorAll("#snacks input[type='number']");
-  const exerciseNumberInputs = document.querySelectorAll("#exercise input[type='number']");
+  const categories = ["breakfast", "lunch", "dinner", "snacks", "exercise"];
+  const calorieData = {};
 
-  const breakfastCalories = getCaloriesFromInputs(breakfastNumberInputs);
-  const lunchCalories = getCaloriesFromInputs(lunchNumberInputs);
-  const dinnerCalories = getCaloriesFromInputs(dinnerNumberInputs);
-  const snacksCalories = getCaloriesFromInputs(snacksNumberInputs);
-  const exerciseCalories = getCaloriesFromInputs(exerciseNumberInputs);
+  categories.forEach(category => {
+    const inputs = document.querySelectorAll(`#${category} input[type='number']`);
+    calorieData[category] = getCaloriesFromInputs(inputs);
+  });
+
   const budgetCalories = getCaloriesFromInputs([budgetNumberInput]);
 
-  if (isError) {
-    return;
-  }
+  if (isError) return;
 
-  const consumedCalories = breakfastCalories + lunchCalories + dinnerCalories + snacksCalories;
-  const remainingCalories = budgetCalories - consumedCalories + exerciseCalories;
+  const consumedCalories = calorieData.breakfast + calorieData.lunch + calorieData.dinner + calorieData.snacks;
+  const remainingCalories = budgetCalories - consumedCalories + calorieData.exercise;
   const surplusOrDeficit = remainingCalories < 0 ? 'Surplus' : 'Deficit';
+
   output.innerHTML = `
-  <span class="${surplusOrDeficit.toLowerCase()}">${Math.abs(remainingCalories)} Calorie ${surplusOrDeficit}</span>
-  <hr>
-  <p>${budgetCalories} Calories Budgeted</p>
-  <p>${consumedCalories} Calories Consumed</p>
-  <p>${exerciseCalories} Calories Burned</p>
+    <span class="${surplusOrDeficit.toLowerCase()}">${Math.abs(remainingCalories)} Calorie ${surplusOrDeficit}</span>
+    <hr>
+    <p><strong>${budgetCalories}</strong> Calories Budgeted</p>
+    <p><strong>${consumedCalories}</strong> Calories Consumed</p>
+    <p><strong>${calorieData.exercise}</strong> Calories Burned</p>
   `;
 
   output.classList.remove('hide');
 }
 
 function getCaloriesFromInputs(list) {
-  let calories = 0;
+  let totalCalories = 0;
 
   for (const item of list) {
     const currVal = cleanInputString(item.value);
-    const invalidInputMatch = isInvalidInput(currVal);
 
-    if (invalidInputMatch) {
-      alert(`Invalid Input: ${invalidInputMatch[0]}`);
+    if (isInvalidInput(currVal) || Number(currVal) < 0 || currVal === "") {
+      alert(`Invalid Input: ${currVal || "Empty Field"}`);
       isError = true;
-      return null;
+      return 0;
     }
-    calories += Number(currVal);
+    totalCalories += Number(currVal);
   }
-  return calories;
+  return totalCalories;
 }
 
 function clearForm() {
-  const inputContainers = Array.from(document.querySelectorAll('.input-container'));
-
-  for (const container of inputContainers) {
-    container.innerHTML = '';
-  }
-
+  document.querySelectorAll('.input-container').forEach(container => container.innerHTML = '');
   budgetNumberInput.value = '';
   output.innerText = '';
   output.classList.add('hide');
@@ -99,12 +89,3 @@ function clearForm() {
 addEntryButton.addEventListener("click", addEntry);
 calorieCounter.addEventListener("submit", calculateCalories);
 clearButton.addEventListener("click", clearForm);
-
-
-
-
-
-
-
-
-
